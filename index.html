@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stroop Effect Experiment</title>
+    <style>
+        :root {
+            --bg-color: #f4f6f9;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --accent-color: #4a90e2;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            background-color: var(--card-bg);
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.05);
+            max-width: 650px;
+            width: 90%;
+            text-align: center;
+        }
+        h1 { margin-top: 0; color: #2c3e50; }
+        p { line-height: 1.6; font-size: 16px; color: #555; text-align: left; }
+        .center-p { text-align: center; }
+        
+        /* 键盘提示样式 */
+        .key-guide {
+            display: flex;
+            justify-content: space-around;
+            margin: 25px 0;
+            padding: 15px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+        .key-item { font-weight: bold; font-size: 15px; }
+        .key {
+            background: #eee;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            padding: 2px 6px;
+            box-shadow: 0 1px 0 rgba(0,0,0,0.2);
+        }
+
+        /* 刺激物呈现区 */
+        #stimulus {
+            font-size: 64px;
+            font-weight: bold;
+            margin: 60px 0;
+            min-height: 80px;
+            letter-spacing: 2px;
+        }
+        #fixation {
+            font-size: 48px;
+            color: #7f8c8d;
+            margin: 60px 0;
+        }
+
+        /* 按钮与反馈 */
+        button {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        button:hover { background-color: #357abd; }
+        .feedback { font-size: 20px; font-weight: bold; margin: 20px 0; }
+        .correct { color: #2ecc71; }
+        .wrong { color: #e74c3c; }
+
+        /* 隐藏元素的类 */
+        .hidden { display: none !important; }
+
+        /* 表格样式 */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: center;
+        }
+        th { background-color: #f2f2f2; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- 1. 指导语界面 -->
+    <div id="instruction-screen">
+        <h1>Stroop Effect Test</h1>
+        <p>Welcome to this experiment. In this test, words will appear on the screen one by one. Each word will be printed in a specific color (Red, Green, or Blue).</p>
+        <p>Your task is to <strong>identify the COLOR of the ink</strong> that the word is printed in, while <strong>IGNORING the meaning</strong> of the word itself.</p>
+        <p>Please respond as quickly and accurately as possible using the following keys on your keyboard:</p>
+        
+        <div class="key-guide">
+            <span class="key-item"><span class="key">R</span> for <span style="color:red">RED</span> ink</span>
+            <span class="key-item"><span class="key">G</span> for <span style="color:green">GREEN</span> ink</span>
+            <span class="key-item"><span class="key">B</span> for <span style="color:blue">BLUE</span> ink</span>
+        </div>
+
+        <p>For example, if you see the word "GREEN" printed in <span style="color:red">RED</span> ink, you should press the <strong>R</strong> key.</p>
+        <p>We will start with a short practice block (6 trials) to help you get used to the task, followed by the formal experiment.</p>
+        <button id="start-practice-btn">Start Practice</button>
+    </div>
+
+    <!-- 2. 实验过渡与块提示界面 -->
+    <div id="message-screen" class="hidden">
+        <h2 id="message-title">Practice Completed</h2>
+        <p id="message-text" class="center-p">Now the formal experiment will begin. There will be no feedback on correctness. Get ready!</p>
+        <button id="message-btn">Start Formal Test</button>
+    </div>
+
+    <!-- 3. 实验呈现界面 -->
+    <div id="experiment-screen" class="hidden">
+        <div id="fixation" class="hidden">+</div>
+        <div id="stimulus"></div>
+        <div id="feedback-container" class="feedback"></div>
+        
+        <div class="key-guide" style="margin-top: 40px; font-size: 12px; opacity: 0.6;">
+            <span>[R] = RED</span> | <span>[G] = GREEN</span> | <span>[B] = BLUE</span>
+        </div>
+    </div>
+
+    <!-- 4. 结果报告界面 -->
+    <div id="result-screen" class="hidden">
+        <h1>Experiment Results</h1>
+        <p class="center-p">Thank you for participating! Here is the summary of your performance:</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Condition</th>
+                    <th>Mean RT (Reaction Time)</th>
+                    <th>Accuracy</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Congruent</strong> (Word & Color match)</td>
+                    <td id="rt-congruent">-</td>
+                    <td id="acc-congruent">-</td>
+                </tr>
+                <tr>
+                    <td><strong>Incongruent</strong> (Word & Color mismatch)</td>
+                    <td id="rt-incongruent">-</td>
+                    <td id="acc-incongruent">-</td>
+                </tr>
+            </tbody>
+        </table>
+        <br>
+        <button onclick="window.location.reload()">Restart Test</button>
+    </div>
+</div>
+
+<script>
+    // --- 实验配置与变量 ---
+    const WORDS = ['RED', 'GREEN', 'BLUE'];
+    const COLORS = ['red', 'green', 'blue'];
+    const KEY_MAP = { 'r': 'red', 'g': 'green', 'b': 'blue', 'R': 'red', 'G': 'green', 'B': 'blue' };
+    
+    let currentBlock = 'practice'; // 'practice' or 'formal'
+    let trials = [];
+    let currentTrialIndex = 0;
+    let trialStartTime = 0;
+    let isAcceptingInput = false;
+    let results = [];
+
+    // --- DOM 元素引用 ---
+    const instructionScreen = document.getElementById('instruction-screen');
+    const messageScreen = document.getElementById('message-screen');
+    const experimentScreen = document.getElementById('experiment-screen');
+    const resultScreen = document.getElementById('result-screen');
+    
+    const stimulusEl = document.getElementById('stimulus');
+    const fixationEl = document.getElementById('fixation');
+    const feedbackEl = document.getElementById('feedback-container');
+
+    // --- 实验控制逻辑 ---
+    
+    // 生成试验序列（洗牌算法）
+    function generateTrials(blockType) {
+        let trialList = [];
+        // 练习生成 6 次：3次一致，3次不一致
+        // 正式生成 24 次：12次一致，12次不一致（可自行调大数量以获得更准的数据）
+        const repeats = blockType === 'practice' ? 1 : 4; 
+        
+        for (let i = 0; i < repeats; i++) {
+            // 一致条件 (Congruent)
+            WORDS.forEach(w => {
+                trialList.push({ word: w, color: w.toLowerCase(), type: 'congruent' });
+            });
+            // 不一致条件 (Incongruent)
+            trialList.push({ word: 'RED', color: 'green', type: 'incongruent' });
+            trialList.push({ word: 'GREEN', color: 'blue', type: 'incongruent' });
+            trialList.push({ word: 'BLUE', color: 'red', type: 'incongruent' });
+        }
+        
+        // 随机打乱数组顺序
+        return trialList.sort(() => Math.random() - 0.5);
+    }
+
+    function startBlock(blockType) {
+        currentBlock = blockType;
+        trials = generateTrials(blockType);
+        currentTrialIndex = 0;
+        
+        instructionScreen.classList.add('hidden');
+        messageScreen.classList.add('hidden');
+        experimentScreen.classList.remove('hidden');
+        
+        nextTrial();
+    }
+
+    function nextTrial() {
+        feedbackEl.innerHTML = "";
+        stimulusEl.innerText = "";
+        
+        if (currentTrialIndex >= trials.length) {
+            endBlock();
+            return;
+        }
+
+        // 1. 呈现注视点 (+) 500毫秒
+        fixationEl.classList.remove('hidden');
+        setTimeout(() => {
+            fixationEl.classList.add('hidden');
+            // 2. 呈现刺激词
+            showStimulus();
+        }, 500);
+    }
+
+    function showStimulus() {
+        const trial = trials[currentTrialIndex];
+        stimulusEl.innerText = trial.word;
+        stimulusEl.style.color = trial.color;
+        
+        trialStartTime = performance.now();
+        isAcceptingInput = true;
+    }
+
+    // 处理键盘输入
+    window.addEventListener('keydown', (event) => {
+        if (!isAcceptingInput) return;
+        
+        const pressedKey = event.key;
+        if (KEY_MAP[pressedKey]) {
+            isAcceptingInput = false;
+            const rt = performance.now() - trialStartTime;
+            const chosenColor = KEY_MAP[pressedKey];
+            const currentTrial = trials[currentTrialIndex];
+            const isCorrect = (chosenColor === currentTrial.color);
+
+            if (currentBlock === 'formal') {
+                results.push({
+                    type: currentTrial.type,
+                    rt: rt,
+                    correct: isCorrect
+                });
+            }
+
+            // 练习阶段显示正确/错误反馈，正式阶段直接进入下一题
+            if (currentBlock === 'practice') {
+                if (isCorrect) {
+                    feedbackEl.innerHTML = '<span class="correct">Correct!</span>';
+                } else {
+                    feedbackEl.innerHTML = '<span class="wrong">Wrong!</span>';
+                }
+                setTimeout(() => {
+                    currentTrialIndex++;
+                    nextTrial();
+                }, 1000); // 反馈显示 1 秒
+            } else {
+                currentTrialIndex++;
+                // 正式测试时加入一个极短的空屏间隔 (ITI)
+                setTimeout(() => {
+                    nextTrial();
+                }, 300);
+            }
+        }
+    });
+
+    function endBlock() {
+        if (currentBlock === 'practice') {
+            // 练习结束，提示进入正式
+            experimentScreen.classList.add('hidden');
+            messageScreen.classList.remove('hidden');
+        } else {
+            // 正式结束，算数据
+            experimentScreen.classList.add('hidden');
+            calculateAndShowResults();
+        }
+    }
+
+    // 计算均值与正确率
+    function calculateAndShowResults() {
+        const congruentTrials = results.filter(r => r.type === 'congruent');
+        const incongruentTrials = results.filter(r => r.type === 'incongruent');
+
+        const calcStats = (trialGroup) => {
+            if (trialGroup.length === 0) return { rt: 'N/A', acc: 'N/A' };
+            const correctTrials = trialGroup.filter(t => t.correct);
+            // 心理学常规：通常只计算正确响应的反应时间
+            const avgRt = correctTrials.reduce((sum, t) => sum + t.rt, 0) / (correctTrials.length || 1);
+            const accuracy = (correctTrials.length / trialGroup.length) * 100;
+            return {
+                rt: Math.round(avgRt) + ' ms',
+                acc: accuracy.toFixed(1) + '%'
+            };
+        };
+
+        const conStats = calcStats(congruentTrials);
+        const inconStats = calcStats(incongruentTrials);
+
+        document.getElementById('rt-congruent').innerText = conStats.rt;
+        document.getElementById('acc-congruent').innerText = conStats.acc;
+        document.getElementById('rt-incongruent').innerText = inconStats.rt;
+        document.getElementById('acc-incongruent').innerText = inconStats.acc;
+
+        resultScreen.classList.remove('hidden');
+    }
+
+    // --- 按钮事件绑定 ---
+    document.getElementById('start-practice-btn').addEventListener('click', () => startBlock('practice'));
+    document.getElementById('message-btn').addEventListener('click', () => startBlock('formal'));
+
+</script>
+</body>
+</html>
